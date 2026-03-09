@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -16,11 +17,7 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-
+    const { error: signUpError } = await supabase.auth.signUp({ email, password })
     setLoading(false)
 
     if (signUpError) {
@@ -32,15 +29,20 @@ export default function SignupPage() {
   }
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', maxWidth: 480 }}>
-      <h1>Sign up</h1>
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: '1rem' }}>
-        <input type='email' placeholder='Email' value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input type='password' placeholder='Password' value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <button type='submit' disabled={loading}>{loading ? 'Creating account...' : 'Create account'}</button>
-      </form>
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      <p style={{ marginTop: '1rem' }}>Already have an account? <a href='/login'>Login</a></p>
+    <main className='auth-page'>
+      <div className='auth-card'>
+        <h1>Create account ✨</h1>
+        <p>Start your journey with a beautiful, endpoint-ready dashboard.</p>
+
+        <form onSubmit={onSubmit} className='auth-form'>
+          <input type='email' placeholder='Email' value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type='password' placeholder='Password' value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <button type='submit' className='primary-btn' disabled={loading}>{loading ? 'Creating...' : 'Create account'}</button>
+        </form>
+
+        {error && <p className='error'>{error}</p>}
+        <p>Already a member? <Link href='/login'>Sign in</Link></p>
+      </div>
     </main>
   )
 }

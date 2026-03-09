@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -16,11 +17,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
 
     if (signInError) {
@@ -32,15 +29,20 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', maxWidth: 480 }}>
-      <h1>Login</h1>
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: '1rem' }}>
-        <input type='email' placeholder='Email' value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input type='password' placeholder='Password' value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <button type='submit' disabled={loading}>{loading ? 'Signing in...' : 'Login'}</button>
-      </form>
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      <p style={{ marginTop: '1rem' }}>No account? <a href='/signup'>Create one</a></p>
+    <main className='auth-page'>
+      <div className='auth-card'>
+        <h1>Welcome back 👋</h1>
+        <p>Sign in to open your ArnoCodes command center.</p>
+
+        <form onSubmit={onSubmit} className='auth-form'>
+          <input type='email' placeholder='Email' value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type='password' placeholder='Password' value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <button type='submit' className='primary-btn' disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</button>
+        </form>
+
+        {error && <p className='error'>{error}</p>}
+        <p>New here? <Link href='/signup'>Create an account</Link></p>
+      </div>
     </main>
   )
 }
