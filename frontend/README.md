@@ -23,6 +23,17 @@ npm run build
 npm start
 ```
 
+## Run frontend with mocked backend (no backend required)
+Use this when you want to open signup/login/dashboard and test all major backend endpoints with fake responses.
+
+```bash
+npm run dev:mock
+```
+
+This enables `NEXT_PUBLIC_USE_MOCK_BACKEND=true`, fakes auth/session, and returns mock JSON for API routes used by the dashboard command center.
+
+Detailed technical documentation: `../docs/FRONTEND_MOCK_BACKEND_MODE.md`.
+
 ## Environment Variables
 Create `.env.local` file for environment-specific configuration.
 
