@@ -1,123 +1,78 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/api'
 
-type Endpoint = {
-  name: string
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
-  path: string
-  body?: Record<string, unknown>
-  note?: string
+type DashboardSummary = {
+  total_questions_solved: number
+  easy: number
+  medium: number
+  hard: number
+  streak: number
 }
 
-const ENDPOINTS: Endpoint[] = [
-  { name: 'Health', method: 'GET', path: '/api/v1/health' },
-  { name: 'My Profile', method: 'GET', path: '/api/v1/profiles/me' },
-  { name: 'Update Profile', method: 'PATCH', path: '/api/v1/profiles/me', body: { full_name: 'Jane Dev' } },
-  { name: 'Profile Status', method: 'GET', path: '/api/v1/profiles/me/status' },
-  { name: 'Platform Connections', method: 'GET', path: '/api/v1/profiles/me/platform-connections' },
-  {
-    name: 'Add Platform Connection',
-    method: 'POST',
-    path: '/api/v1/profiles/me/platform-connections',
-    body: { platform: 'leetcode', handle: 'your_handle' },
-  },
-  { name: 'Remove Platform Connection', method: 'DELETE', path: '/api/v1/profiles/me/platform-connections/{platform}' },
-  { name: 'Dashboard Summary', method: 'GET', path: '/api/v1/dashboard/summary' },
-  { name: 'Dashboard Full', method: 'GET', path: '/api/v1/dashboard' },
-  { name: 'Dashboard Heatmap', method: 'GET', path: '/api/v1/dashboard/heatmap?from=2025-01-01&to=2025-12-31' },
-  { name: 'Course', method: 'GET', path: '/api/v1/course' },
-  { name: 'Course Structure', method: 'GET', path: '/api/v1/course/structure' },
-  { name: 'Topic Details', method: 'GET', path: '/api/v1/topics/{topicId}' },
-  { name: 'Subtopic Details', method: 'GET', path: '/api/v1/subtopics/{subtopicId}' },
-  {
-    name: 'Start Diagnostic',
-    method: 'POST',
-    path: '/api/v1/diagnostic/start',
-    body: { topic: 'arrays', source: 'dashboard' },
-  },
-  { name: 'Diagnostic Next', method: 'GET', path: '/api/v1/diagnostic/{attemptId}/next' },
-  {
-    name: 'Diagnostic Answer',
-    method: 'POST',
-    path: '/api/v1/diagnostic/{attemptId}/answer',
-    body: { question_id: 'uuid', answer: 'A' },
-  },
-  { name: 'Diagnostic Status', method: 'GET', path: '/api/v1/diagnostic/{attemptId}/status' },
-  { name: 'Diagnostic Submit', method: 'POST', path: '/api/v1/diagnostic/{attemptId}/submit' },
-  { name: 'Platform Sync Trigger', method: 'POST', path: '/api/v1/platform-sync/trigger' },
-  { name: 'Platform Sync Job', method: 'GET', path: '/api/v1/platform-sync/jobs/{jobId}' },
-  { name: 'Platform Sync Overview', method: 'GET', path: '/api/v1/platform-sync/overview' },
-  {
-    name: 'IDE Run',
-    method: 'POST',
-    path: '/api/v1/ide/run',
-    body: { question_id: 'uuid', language: 'python', code: 'print("hello")' },
-  },
-  {
-    name: 'IDE Submit',
-    method: 'POST',
-    path: '/api/v1/ide/submit',
-    body: { question_id: 'uuid', language: 'python', code: 'print(input())' },
-  },
-  { name: 'IDE Status', method: 'GET', path: '/api/v1/ide/status?id={submissionId}' },
-  {
-    name: 'AI Query',
-    method: 'POST',
-    path: '/api/v1/ai/query',
-    body: { prompt: 'Explain two pointer approach' },
-  },
+const recentQuestions = [
+  { name: 'Trapping Rain Water', diff: 'hard', platform: 'LC', time: '2h ago', topic: 'Two Pointers' },
+  { name: 'Merge Intervals', diff: 'med', platform: 'LC', time: '5h ago', topic: 'Arrays' },
+  { name: 'Word Break', diff: 'med', platform: 'GFG', time: '1d ago', topic: 'DP' },
+  { name: 'Number of Islands', diff: 'med', platform: 'LC', time: '1d ago', topic: 'Graphs' },
+  { name: 'Valid Parentheses', diff: 'easy', platform: 'CF', time: '2d ago', topic: 'Stack' },
 ]
 
-export default function Home() {
-  const [selected, setSelected] = useState<Endpoint>(ENDPOINTS[0])
-  const [path, setPath] = useState(selected.path)
-  const [body, setBody] = useState(JSON.stringify(selected.body ?? {}, null, 2))
-  const [result, setResult] = useState('')
-  const [loading, setLoading] = useState(false)
+const topicMastery = [
+  { name: 'Arrays', pct: 88 },
+  { name: 'Linked Lists', pct: 72 },
+  { name: 'Trees', pct: 61 },
+  { name: 'Graphs', pct: 44 },
+  { name: 'Dynamic Prog.', pct: 38 },
+  { name: 'Greedy', pct: 25 },
+]
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, Endpoint[]>()
-    ENDPOINTS.forEach((ep) => {
-      const bucket = ep.path.split('/')[3] || 'misc'
-      map.set(bucket, [...(map.get(bucket) ?? []), ep])
-    })
-    return Array.from(map.entries())
+function masteryColor(pct: number) {
+  if (pct >= 80) return 'var(--green)'
+  if (pct >= 40) return 'var(--amber)'
+  return 'var(--red)'
+}
+
+export default function Home() {
+  const [summary, setSummary] = useState<DashboardSummary>({
+    total_questions_solved: 347,
+    easy: 182,
+    medium: 134,
+    hard: 31,
+    streak: 23,
+  })
+  const [platforms, setPlatforms] = useState<string[]>(['LeetCode ✓', 'GFG ✓', 'CodeForces ✓'])
+
+  useEffect(() => {
+    const load = async () => {
+      const summaryRes = await apiFetch('/api/v1/dashboard/summary')
+      const summaryJson = await summaryRes.json()
+      if (summaryJson?.data) {
+        setSummary((prev) => ({ ...prev, ...summaryJson.data }))
+      }
+
+      const platformRes = await apiFetch('/api/v1/profiles/me/platform-connections')
+      const platformJson = await platformRes.json()
+      if (Array.isArray(platformJson?.data)) {
+        setPlatforms(platformJson.data.map((p: { platform: string }) => `${p.platform} ✓`))
+      }
+    }
+
+    load().catch(() => undefined)
   }, [])
 
-  const selectEndpoint = (endpoint: Endpoint) => {
-    setSelected(endpoint)
-    setPath(endpoint.path)
-    setBody(JSON.stringify(endpoint.body ?? {}, null, 2))
-    setResult('')
-  }
-
-  const runEndpoint = async () => {
-    setLoading(true)
-    setResult('')
-    try {
-      const payload = body.trim() ? JSON.parse(body) : undefined
-      const response = await apiFetch(path, {
-        method: selected.method,
-        body: selected.method === 'GET' || selected.method === 'DELETE' ? undefined : JSON.stringify(payload ?? {}),
-      })
-      const text = await response.text()
-      const pretty = (() => {
-        try {
-          return JSON.stringify(JSON.parse(text), null, 2)
-        } catch {
-          return text
-        }
-      })()
-      setResult(`HTTP ${response.status}\n\n${pretty}`)
-    } catch (error) {
-      setResult(`Request failed: ${String(error)}`)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const dateLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+    [],
+  )
 
   const logout = async () => {
     await supabase.auth.signOut()
@@ -125,48 +80,94 @@ export default function Home() {
   }
 
   return (
-    <main className='page'>
-      <section className='hero'>
-        <h1>ArnoCodes API Command Center</h1>
-        <p>Creative dashboard to explore all major backend endpoints from one modern interface.</p>
-        <button className='secondary-btn' onClick={logout}>Logout</button>
-      </section>
+    <div className='shell'>
+      <header className='topbar'>
+        <div className='logo'>
+          <div className='logo-icon'>⚡</div>
+          Algo<span>Path</span>
+        </div>
+        <div className='topbar-right'>
+          <div className='platform-badges'>
+            {platforms.map((p) => (
+              <span key={p} className='badge'>
+                {p}
+              </span>
+            ))}
+          </div>
+          <div className='avatar'>RK</div>
+          <button className='secondary-btn' onClick={logout}>
+            Logout
+          </button>
+        </div>
+      </header>
 
-      <section className='dashboard-grid'>
-        <aside className='panel'>
-          <h2>Endpoint Catalog</h2>
-          {grouped.map(([group, endpoints]) => (
-            <div key={group} className='endpoint-group'>
-              <h3>{group.toUpperCase()}</h3>
-              {endpoints.map((ep) => (
-                <button
-                  key={`${ep.method}-${ep.path}`}
-                  className={`endpoint-item ${selected.path === ep.path ? 'active' : ''}`}
-                  onClick={() => selectEndpoint(ep)}
-                >
-                  <span className={`pill ${ep.method.toLowerCase()}`}>{ep.method}</span>
-                  <span>{ep.name}</span>
-                </button>
-              ))}
+      <aside className='sidebar'>
+        <div className='profile-card'>
+          <div className='profile-avatar'>RK</div>
+          <div className='profile-name'>Rohit Kumar</div>
+          <div className='profile-meta'>LNCT Bhopal · CS — 2026</div>
+          <div className='profile-rank'>🏆 Rank 4,821</div>
+        </div>
+
+        <div className='streak-widget'>
+          <div className='streak-label'>🔥 Current Streak</div>
+          <div className='streak-main'>{summary.streak} days</div>
+        </div>
+
+        <div className='mastery-list'>
+          {topicMastery.map((topic) => (
+            <div key={topic.name} className='mastery-item'>
+              <div className='mastery-header'>
+                <span>{topic.name}</span>
+                <span>{topic.pct}%</span>
+              </div>
+              <div className='mastery-bar'>
+                <div className='mastery-fill' style={{ width: `${topic.pct}%`, background: masteryColor(topic.pct) }} />
+              </div>
             </div>
           ))}
-        </aside>
+        </div>
+      </aside>
 
-        <section className='panel'>
-          <h2>API Playground</h2>
-          <label>Path</label>
-          <input value={path} onChange={(e) => setPath(e.target.value)} placeholder='/api/v1/...' />
+      <main className='main'>
+        <div>
+          <h1 className='page-title'>Good evening, <span>Rohit</span> 👋</h1>
+          <p className='muted'>{dateLabel} · Keep the streak alive!</p>
+        </div>
 
-          <label>Body (JSON)</label>
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={10} />
-
-          <button className='primary-btn' onClick={runEndpoint} disabled={loading}>
-            {loading ? 'Running...' : `Run ${selected.method}`}
-          </button>
-
-          <pre className='result'>{result || 'Run an endpoint to see response...'}</pre>
+        <section className='stats-row'>
+          <div className='stat-card'>
+            <h3>Total Solved</h3>
+            <p>{summary.total_questions_solved}</p>
+          </div>
+          <div className='stat-card'>
+            <h3>Easy</h3>
+            <p>{summary.easy}</p>
+          </div>
+          <div className='stat-card'>
+            <h3>Medium</h3>
+            <p>{summary.medium}</p>
+          </div>
+          <div className='stat-card'>
+            <h3>Hard</h3>
+            <p>{summary.hard}</p>
+          </div>
         </section>
-      </section>
-    </main>
+
+        <section className='section-card'>
+          <h2>Recently Solved</h2>
+          <div className='q-list'>
+            {recentQuestions.map((q) => (
+              <div key={q.name} className='q-item'>
+                <span className={`q-diff ${q.diff}`} />
+                <span className='q-name'>{q.name}</span>
+                <span className='q-topic'>{q.topic}</span>
+                <span className='q-time'>{q.time}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
   )
 }
